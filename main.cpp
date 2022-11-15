@@ -11,7 +11,7 @@ using std::string;
 void testHash(HashMap<int, int> *hash, std::ofstream &myfile)
 {
 
-    myfile << "current size: " << hash->get_size() << " bucket count: " << hash->get_bucket_count()
+    myfile << "current size: " << hash->get_capacity() << " bucket count: " << hash->get_num_items()
            << " load factor: " << hash->get_load_factor() << std::endl;
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     for (int i = 0; i < 100000; ++i)
@@ -36,7 +36,7 @@ void testHash(HashMap<int, int> *hash, std::ofstream &myfile)
     end = std::chrono::steady_clock::now();
     myfile << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[ms]" << std::endl;
 
-    myfile << "current size: " << hash->get_size() << " bucket count: " << hash->get_bucket_count()
+    myfile << "current size: " << hash->get_capacity() << " bucket count: " << hash->get_num_items()
            << " load factor: " << hash->get_load_factor() << std::endl;
     hash->clear();
 }
