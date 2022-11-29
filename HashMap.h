@@ -26,16 +26,16 @@ class HashMap {
 
     private:
         // returns the bucket index of an element
-        unsigned int hash(const K& key) const;
+        unsigned int _hash(const K& key) const;
         
         // rehashes the entire table
-        void rehash();
+        void _rehash();
 
         // find a slot in the hash table with a lower psl value than the new key
-        bool find_slot(const std::pair<K,V>& element, int psl, unsigned int idx);
+        bool _find_slot(const std::pair<K,V>& element, int psl, unsigned int idx);
 
         // shift keys up from idx after an item has been deleted where idx represents an empty slot to be filled
-        void shift_keys(unsigned int deleted_idx);
+        void _shift_keys(unsigned int deleted_idx);
 
         unsigned int max_capacity = 0;
         unsigned int num_items = 0;
@@ -70,12 +70,12 @@ void HashMap<K,V>::clear() {
 template <class K, class V>
 bool HashMap<K,V>::insert(const std::pair<K,V>& element) {
     if(get_load_factor() > DEFAULT_LOAD_FACTOR) {
-        rehash();
+        _rehash();
     }
-    int idx = hash(element.first);
+    int idx = _hash(element.first);
     if(base_table[idx].second == -1) {
         base_table[idx] = {element, idx};
-    } else if(!find_slot(element, 1, ++idx)) {
+    } else if(!_find_slot(element, 1, ++idx)) {
             return false;
     }
     ++num_items;
@@ -84,10 +84,10 @@ bool HashMap<K,V>::insert(const std::pair<K,V>& element) {
 
 template <class K, class V>
 bool HashMap<K,V>::erase(const K& key) {
-    unsigned int idx = hash(key);
+    unsigned int idx = _hash(key);
     for(; idx < this->max_capacity; ++idx) {
         if(base_table[idx].first.first == key) {
-            shift_keys(idx);
+            _shift_keys(idx);
             --num_items;
             return true;
         }
@@ -100,7 +100,7 @@ bool HashMap<K,V>::erase(const K& key) {
 
 template <class K, class V>
 V HashMap<K,V>::operator[](const K& key) const {
-    unsigned int idx = hash(key);
+    unsigned int idx = _hash(key);
     while(idx < this->max_capacity && base_table[idx].second > 0) {
         if(base_table[idx].first.first == key) {
             return base_table[idx].first.second;
@@ -130,17 +130,17 @@ int HashMap<K,V>::get_num_items() const {
 /// *** PRIVATE METHODS *** ///
 
 template <class K, class V>
-unsigned int HashMap<K,V>::hash(const K& key) const {
+unsigned int HashMap<K,V>::_hash(const K& key) const {
         
     unsigned int hash_code = ((hash_const_a * key + hash_const_b));
 
-    int hash_val = hash_code & ((hash_code << 2) | (hash_code << 11));
+    int hash_val = hash_code & ((hash_code << 5) | (hash_code << 12));
     return hash_val & (this->max_capacity - 1);    
     
 }
 
 template <class K, class V>
-void HashMap<K,V>::rehash() {
+void HashMap<K,V>::_rehash() {
     auto new_table = base_table;
     base_table.clear();
     this->max_capacity = this->max_capacity << 1;
@@ -155,7 +155,7 @@ void HashMap<K,V>::rehash() {
 }
 
 template <class K, class V>
-bool HashMap<K,V>::find_slot(const std::pair<K,V>& element, int psl, unsigned int idx) {
+bool HashMap<K,V>::_find_slot(const std::pair<K,V>& element, int psl, unsigned int idx) {
     for(; idx < this->max_capacity; ++idx) {
         if(base_table[idx].second == -1) {
             base_table[idx] = {element, psl};
@@ -164,7 +164,7 @@ bool HashMap<K,V>::find_slot(const std::pair<K,V>& element, int psl, unsigned in
             std::pair<K,V> original_occupant = base_table[idx].first;
             int original_psl = base_table[idx].second;
             base_table[idx] = {element, psl};
-            find_slot(original_occupant, ++original_psl, ++idx);
+            _find_slot(original_occupant, ++original_psl, ++idx);
             return true;
         }
         ++psl;
@@ -173,7 +173,7 @@ bool HashMap<K,V>::find_slot(const std::pair<K,V>& element, int psl, unsigned in
 }
 
 template <class K, class V>
-void HashMap<K,V>::shift_keys(unsigned int deleted_idx) {
+void HashMap<K,V>::_shift_keys(unsigned int deleted_idx) {
     while(deleted_idx < this->max_capacity - 1 && base_table[deleted_idx].second > 0) {
         base_table[deleted_idx] = base_table[++deleted_idx];
     }
