@@ -1,7 +1,7 @@
 #ifndef __HASHMAP
 #define __HASHMAP
 
-#define DEFAULT_LOAD_FACTOR 0.90
+#define DEFAULT_LOAD_FACTOR 0.9
 
 #include <vector>
 
@@ -32,16 +32,14 @@ class HashMap {
         void _rehash();
 
         // find a slot in the hash table with a lower psl value than the new key
-        bool _find_slot(const std::pair<K,V>& element, int psl, unsigned int idx);
+        bool _find_slot(const std::pair<K,V>& element, u_int8_t psl, unsigned int idx);
 
         // shift keys up from idx after an item has been deleted where idx represents an empty slot to be filled
         void _shift_keys(unsigned int deleted_idx);
 
         unsigned int max_capacity = 0;
         unsigned int num_items = 0;
-        unsigned int hash_const_a = 5;
-        unsigned int hash_const_b = 9;
-        vector<pair<pair<K,V>,int>> base_table;
+        vector<pair<pair<K,V>,u_int8_t>> base_table;
 };
 
 
@@ -50,7 +48,7 @@ template <class K, class V>
 HashMap<K,V>::HashMap() {
     max_capacity = 16;
     num_items = 0;
-    base_table = vector<pair<pair<K,V>, int>>(max_capacity, {{-1, -1}, -1});
+    base_table = vector<pair<pair<K,V>, u_int8_t>>(max_capacity, {{-1, -1}, 0});
 }
 
 template <class K, class V>
@@ -73,9 +71,9 @@ bool HashMap<K,V>::insert(const std::pair<K,V>& element) {
         _rehash();
     }
     int idx = _hash(element.first);
-    if(base_table[idx].second == -1) {
-        base_table[idx] = {element, idx};
-    } else if(!_find_slot(element, 1, ++idx)) {
+    if(base_table[idx].second == 0) {
+        base_table[idx] = {element, 1};
+    } else if(!_find_slot(element, 2, ++idx)) {
             return false;
     }
     ++num_items;
@@ -132,32 +130,39 @@ int HashMap<K,V>::get_num_items() const {
 template <class K, class V>
 unsigned int HashMap<K,V>::_hash(const K& key) const {
         
-    unsigned int hash_code = ((hash_const_a * key + hash_const_b));
-
-    int hash_val = hash_code & ((hash_code << 5) | (hash_code << 12));
+    unsigned int hash_code = (key * 0x55555);
+    hash_code ^= hash_code >> 9;
+    unsigned int hash_val = hash_code & ((hash_code << 5) | (hash_code << 12));
     return hash_val & (this->max_capacity - 1);    
     
 }
-
+// If I can find a way to avoid excess copies here I will save a lot of performance
 template <class K, class V>
 void HashMap<K,V>::_rehash() {
-    auto new_table = base_table;
-    base_table.clear();
+
+    vector<std::pair<K,V>> items;
+    items.reserve(this->num_items);
+    for(auto itr:base_table) {
+        if(itr.second != 0) {
+            items.push_back(itr.first);
+        }
+    }
+    if(items.size() != num_items) {
+        return;
+    }
     this->max_capacity = this->max_capacity << 1;
-    base_table.resize(this->max_capacity, {{-1, -1}, -1});
-    hash_const_a = (hash_const_a << 1) + 1;
-    hash_const_b = (hash_const_b << 1) + 1;
-    for(auto itr:new_table) {
-        if(itr.second != -1) {
-            insert(itr.first);
-        } 
+    this->base_table.clear();
+    this->num_items = 0;
+    this->base_table.resize(this->max_capacity, {{-1, -1}, 0});
+    for(auto itr:items) {
+        insert(itr);
     }
 }
 
 template <class K, class V>
-bool HashMap<K,V>::_find_slot(const std::pair<K,V>& element, int psl, unsigned int idx) {
+bool HashMap<K,V>::_find_slot(const std::pair<K,V>& element, u_int8_t psl, unsigned int idx) {
     for(; idx < this->max_capacity; ++idx) {
-        if(base_table[idx].second == -1) {
+        if(base_table[idx].second == 0) {
             base_table[idx] = {element, psl};
             return true;
         } else if(base_table[idx].second < psl) {
